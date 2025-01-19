@@ -17,19 +17,23 @@ const Pets = () => {
         return;
       }
       try {
+        console.log('Fetching pets with token:', user.token);
         const response = await fetch('http://localhost:4000/approvedPets', {
           headers: {
             'Authorization': `Bearer ${user.token}`
           }
         });
+        console.log('Response status:', response.status);
+        
         if (!response.ok) {
           throw new Error('Failed to fetch pets data');
         }
         const data = await response.json();
+        console.log('Fetched pets data:', data);
         setPetsData(data);
-        setError(null); 
+        setError(null);
       } catch (error) {
-        console.error(error);
+        console.error('Fetch error:', error);
         setError('An error occurred while fetching the data');
       } finally {
         setLoading(false);

@@ -1,3 +1,6 @@
+git clone https://github.com/Kuncode2/petadobation-website
+cd petadobation-website
+
 # client
 cd cliennt
 npm i

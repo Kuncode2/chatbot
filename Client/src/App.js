@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   BrowserRouter as Router,
   Routes,
@@ -20,6 +20,7 @@ import "./App.css";
 import FourOhFourPage from "./Components/404/FourOhFourPage";
 import ChatbotIcon from "./Components/Chatbot/Chatbot";
 import ChatForm from "./Components/Chatbot/ChatForm";
+import ChatMessage from "./Components/Chatbot/ChatMessage";
 
 const Layout = ({ children }) => (
   <>
@@ -34,8 +35,46 @@ const ProtectedRoute = ({ user, children }) => {
 };
 
 const App = () => {
+  const [chatHistory, setChatHistory] = useState([]);
+  const [showChatbot, setShowChatbot] = useState(false);
+  const screRoll = useRef()
+
+  const updateHistory = (text) => {
+    setChatHistory((prev) => [
+      ...prev.filter((msg) => msg.text !== "Thinking..."),
+      { role: "model", text },
+    ]);
+  };
   const { user } = useAuthContext();
 
+  const generateBotResponse = async (history) => {
+    history = history.map(({ role, text }) => ({ role, parts: [{ text }] }));
+    const requestOptions = {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ contents: history }),
+    };
+    try {
+      const response = await fetch(
+        "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=AIzaSyAPmBl06rzEFzYIeiMmkldMOR351OXM98Y",
+        requestOptions
+      );
+      const data = await response.json();
+      const apiresponse = data?.candidates[0]?.content?.parts[0]?.text
+        .replace(/<[^>]*>/g, "$1")
+        .trim();
+      updateHistory(apiresponse);
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
+  useEffect(() => { 
+    screRoll.current.scrollTo({
+      top: screRoll.current.scrollHeight,
+      behavior: "smooth",
+    });
+  },[chatHistory])
   return (
     <>
       <Router>
@@ -110,34 +149,50 @@ const App = () => {
         </Routes>
       </Router>
       <div className="fakebody">
-      <div className="container">
-        <div className="chatbot-popup">
-          <div className="chat-header">
-            <div className="header-info">
-              <ChatbotIcon />
-              <h2>Chatbot</h2>
-            </div>
-            <button class="material-symbols-outlined">
-              keyboard_arrow_down
-            </button>
-          </div>
+        <div className={`container ${showChatbot ? "show-chatbot" : ""}`}>
+          <button
+            onClick={() => setShowChatbot((prev) => !prev)}
+            id="chatbot-toggler"
+          >
+            <span className="material-symbols-outlined">mode_comment</span>
+            <span className="material-symbols-outlined">close</span>
+          </button>
 
-          <div className="chat-body">
-            <div className="message bot-message">
-              <ChatbotIcon />
-              <p className="message-text">
-                Hey there 👋 <br /> How can I help you today?
-              </p>
+          <div className="chatbot-popup">
+            <div className="chat-header">
+              <div className="header-info">
+                <ChatbotIcon />
+                <h2>Chatbot</h2>
+              </div>
+              <button
+                onClick={() => setShowChatbot((prev) => !prev)}
+                className="material-symbols-outlined"
+              >
+                keyboard_arrow_down
+              </button>
             </div>
-            <div className="message user-message">
-              <p className="message-text">lorem</p>
+
+            <div ref={screRoll} className="chat-body">
+              <div className="message bot-message">
+                <ChatbotIcon />
+                <p className="message-text">
+                  Hey there 👋 <br /> How can I help you today?
+                </p>
+              </div>
+              {chatHistory.map((chat, index) => {
+                return <ChatMessage key={index} chat={chat} />;
+              })}
             </div>
-          </div>
-          <div className="chat-footer">
-            <ChatForm/>
+
+            <div className="chat-footer">
+              <ChatForm
+                chatHistory={chatHistory}
+                setChatHistory={setChatHistory}
+                generateBotResponse={generateBotResponse}
+              />
+            </div>
           </div>
         </div>
-      </div>
       </div>
     </>
   );
